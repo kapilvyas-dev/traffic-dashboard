@@ -1244,7 +1244,7 @@ function handleUpload(event){
         const hdr=lines[headerIdx].split(',').map(h=>h.trim().replace(/^"|"$/g,'').toLowerCase());
         const mi=hdr.findIndex(h=>h==='month'||h==='date'), ci=hdr.findIndex(h=>h.includes('campaign')), xi=hdr.findIndex(h=>h==='city');
         const ui=hdr.findIndex(h=>h.includes('users')||h.includes('sessions')), ai=hdr.findIndex(h=>h.includes('cart')||h.includes('atc')), oi=hdr.findIndex(h=>h.includes('checkout'));
-        if([mi,ci,xi,ui].some(i=>i<0)) throw new Error('Missing columns. Need: Date/Month, Session campaign, City, Total users');
+        if([mi,ci,ui].some(i=>i<0)) throw new Error('Missing columns. Need: Date/Month, Session campaign, Total users (City is optional for daily files)');
         for(let i=headerIdx+1;i<lines.length;i++){
           const cols=parseCSVLine(lines[i]); if(!cols[mi])continue;
           const mv=cols[mi]?cols[mi].trim():'';
@@ -1265,7 +1265,7 @@ function handleUpload(event){
         const hdr=rows[hdrIdx].map(h=>String(h).trim().toLowerCase());
         const mi=hdr.findIndex(h=>h==='month'), ci=hdr.findIndex(h=>h.includes('campaign')), xi=hdr.findIndex(h=>h==='city');
         const ui=hdr.findIndex(h=>h.includes('users')), ai=hdr.findIndex(h=>h.includes('cart')||h.includes('atc')), oi=hdr.findIndex(h=>h.includes('checkout'));
-        if([mi,ci,xi,ui].some(i=>i<0))throw new Error('Missing columns');
+        if([mi,ci,ui].some(i=>i<0))throw new Error('Missing columns. Need: Month, Session campaign, Total users (City is optional for daily files)');
         for(let i=hdrIdx+1;i<rows.length;i++){
           const row=rows[i]; if(!row[mi])continue;
           const mv=String(row[mi]).trim().replace('.0',''); if(!['3','4','5','6','03','04','05','06'].includes(mv))continue;
