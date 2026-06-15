@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TSC Traffic Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- server.js is the Node.js backend — do not include here -->
 <style>
 :root{
   --bg:#0d0f14;--surface:#151820;--surface2:#1c2030;--surface3:#232840;
@@ -699,6 +700,87 @@ function monthDisplayLabel(month){
   return `${MONTH_LABELS[month]||month} (proj.)`;
 }
 
+// ── SERVER SYNC ────────────────────────────────────────────────
+const API_BASE = '';  // same origin when served by Node
+
+async function serverSaveUpload(rows, newProjections){
+  try {
+    await fetch(`${API_BASE}/api/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rows, projections: newProjections })
+    });
+  } catch(e){ console.warn('Could not save upload to server:', e.message); }
+}
+
+async function serverSaveMappings(cityMap, qaMap){
+  try {
+    await fetch(`${API_BASE}/api/mappings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cityMap, qaMap })
+    });
+  } catch(e){ console.warn('Could not save mappings to server:', e.message); }
+}
+
+async function serverSaveProjection(month, projection){
+  try {
+    await fetch(`${API_BASE}/api/projections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ month, projection })
+    });
+  } catch(e){ console.warn('Could not save projection to server:', e.message); }
+}
+
+async function loadFromServer(){
+  try {
+    const res = await fetch(`${API_BASE}/api/data`);
+    if (!res.ok) return;
+    const data = await res.json();
+
+    // Restore mappings if the server has them
+    if (data.cityMap && Object.keys(data.cityMap).length) {
+      CITY_MAP = data.cityMap;
+      document.getElementById('cityMapCount').textContent = Object.keys(CITY_MAP).length.toLocaleString() + ' entries';
+      document.getElementById('cityMapUpdated').textContent = 'Source: database';
+    }
+    if (data.qaMap && Object.keys(data.qaMap).length) {
+      QA_MAP = data.qaMap;
+      document.getElementById('qaMapCount').textContent = Object.keys(QA_MAP).length.toLocaleString() + ' entries';
+      document.getElementById('qaMapUpdated').textContent = 'Source: database';
+    }
+
+    // Restore projections
+    if (data.projections && Object.keys(data.projections).length) {
+      Object.assign(projections, data.projections);
+    }
+
+    // Restore raw rows and re-aggregate
+    if (data.rawRows && data.rawRows.length > 0) {
+      S.storedRawRows = data.rawRows;
+      const res2 = aggregateRaw(data.rawRows);
+      const months = new Set([...Object.keys(res2.city), ...Object.keys(res2.sm), ...Object.keys(res2.camp)]);
+      months.forEach(m => {
+        if (res2.city[m]) S.city[m] = res2.city[m];
+        if (res2.sm[m])   S.sm[m]   = res2.sm[m];
+        if (res2.camp[m]) S.camp[m] = res2.camp[m];
+      });
+      const mnms = [...months].sort().map(m => MONTH_LABELS[m] || m).join(' · ');
+      document.getElementById('badgeMonths').textContent = mnms;
+      setDataStatus(`✓ Loaded ${data.rawRows.length.toLocaleString()} rows from database (${mnms})`, 'success');
+    }
+
+    populateFilters();
+    applyFilters();
+    updateMapCards();
+    renderPreview();
+    renderProjTable();
+  } catch(e){
+    console.warn('Could not load data from server (running offline?):', e.message);
+  }
+}
+
 // ── INIT ───────────────────────────────────────────────────────
 function init(){
   setupDragDrop();
@@ -707,6 +789,7 @@ function init(){
   updateMapCards();
   renderPreview();
   renderProjTable();
+  loadFromServer();
 }
 
 function getMonths(){ return [...new Set([...Object.keys(S.city),...Object.keys(S.sm),...Object.keys(S.camp)])].sort(); }
@@ -1083,7 +1166,14 @@ function commitUpload(){
 
   const projDesc=projEnabled?` · Projected ${document.getElementById('projDaysIn').value}d → ${document.getElementById('projDaysTo').value}d`:'';
   const mnms=[...uploadedMonths].sort().map(m=>MONTH_LABELS[m]||'Month '+m).join(', ');
-  setDataStatus(`✓ Loaded ${res.total.toLocaleString()} rows for ${mnms}${projDesc}. QA: ${res.byFlag.QA||0} · Non-QA: ${res.byFlag['Non-QA']||0} · Unmapped: ${res.byFlag.Unmapped||0}`,'success');
+  setDataStatus(`✓ Loaded ${res.total.toLocaleString()} rows for ${mnms}${projDesc}. QA: ${res.byFlag.QA||0} · Non-QA: ${res.byFlag['Non-QA']||0} · Unmapped: ${res.byFlag.Unmapped||0} · Saving to database…`,'success');
+  // Persist to MongoDB — only send the rows belonging to uploaded months
+  const uploadedRows = rawRows.filter(r => uploadedMonths.has(r.month));
+  const projToSave = {};
+  uploadedMonths.forEach(m => { if (projections[m]) projToSave[m] = projections[m]; });
+  serverSaveUpload(uploadedRows, projToSave).then(() => {
+    setDataStatus(`✓ Loaded ${res.total.toLocaleString()} rows for ${mnms}${projDesc}. QA: ${res.byFlag.QA||0} · Non-QA: ${res.byFlag['Non-QA']||0} · Unmapped: ${res.byFlag.Unmapped||0} · Saved to database ✓`,'success');
+  });
   document.getElementById('badgeMonths').textContent=getMonths().map(m=>monthDisplayLabel(m)).join(' · ');
   document.getElementById('uploadConfirmWrap').style.display='none';
   document.getElementById('projBox').classList.remove('visible');
@@ -1118,10 +1208,12 @@ function applyProjEdit(m){
   const din=parseInt(document.getElementById(`pdin_${m}`).value)||1;
   const dto=parseInt(document.getElementById(`pdto_${m}`).value)||30;
   projections[m]={days_elapsed:din, project_to:dto};
+  serverSaveProjection(m, projections[m]);
   renderProjTable(); populateFilters(); applyFilters();
 }
 function removeProjEdit(m){
   delete projections[m];
+  serverSaveProjection(m, null);
   renderProjTable(); populateFilters(); applyFilters();
 }
 
@@ -1375,7 +1467,8 @@ function handleMappingUpload(event){
       document.getElementById('cityMapUpdated').textContent='Updated: '+now;
       document.getElementById('qaMapUpdated').textContent='Updated: '+now;
       renderPreview(); setMapProgress(100);
-      setMapStatus(`✓ Mappings refreshed — ${Object.keys(newCityMap).length} city · ${Object.keys(newQAMap).length} campaign entries.${reprocessed>0?' Re-processed '+reprocessed.toLocaleString()+' rows.':''}`,'success');
+      setMapStatus(`✓ Mappings refreshed — ${Object.keys(newCityMap).length} city · ${Object.keys(newQAMap).length} campaign entries.${reprocessed>0?' Re-processed '+reprocessed.toLocaleString()+' rows.':''} Saving…`,'success');
+      serverSaveMappings(newCityMap, newQAMap).then(()=>setMapStatus(`✓ Mappings saved to database — ${Object.keys(newCityMap).length} city · ${Object.keys(newQAMap).length} campaign entries.${reprocessed>0?' Re-processed '+reprocessed.toLocaleString()+' rows.':''}`,'success'));
       setTimeout(()=>setMapProgress(null),1500);
       populateFilters(); applyFilters();
     } catch(err){ setMapProgress(null); setMapStatus('✗ '+err.message,'error'); }
