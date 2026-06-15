@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TSC Traffic Dashboard — Login</title>
+<style>
+:root{
+  --bg:#0d0f14;--surface:#151820;--surface2:#1c2030;--surface3:#232840;
+  --border:#2a3050;--accent:#4f8ef7;--accent2:#7c4dff;
+  --green:#22c55e;--red:#ef4444;--amber:#f59e0b;
+  --text:#e8eaf0;--text2:#8b93b0;--text3:#5a6480;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Inter',system-ui,sans-serif;font-size:14px;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+}
+
+/* subtle animated background blobs */
+body::before,body::after{
+  content:'';position:absolute;border-radius:50%;filter:blur(80px);opacity:.12;pointer-events:none;
+}
+body::before{
+  width:520px;height:520px;
+  background:radial-gradient(circle,var(--accent),var(--accent2));
+  top:-120px;left:-120px;
+}
+body::after{
+  width:400px;height:400px;
+  background:radial-gradient(circle,var(--accent2),#22c55e);
+  bottom:-100px;right:-80px;
+}
+
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:18px;padding:44px 40px 40px;
+  width:100%;max-width:420px;
+  position:relative;z-index:1;
+  box-shadow:0 24px 60px rgba(0,0,0,.5);
+}
+
+.logo-row{
+  display:flex;align-items:center;gap:12px;margin-bottom:32px;justify-content:center;
+}
+.logo{
+  width:44px;height:44px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:16px;color:#fff;flex-shrink:0;
+  box-shadow:0 4px 16px rgba(79,142,247,.35);
+}
+.brand{display:flex;flex-direction:column}
+.brand-name{font-size:17px;font-weight:700;letter-spacing:-.3px}
+.brand-sub{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-top:2px}
+
+h2{font-size:22px;font-weight:800;letter-spacing:-.4px;margin-bottom:6px}
+.subtitle{font-size:13px;color:var(--text2);margin-bottom:28px}
+
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:18px}
+.field label{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+
+.input-wrap{position:relative;display:flex;align-items:center}
+.input-wrap input{
+  width:100%;background:var(--surface2);border:1.5px solid var(--border);
+  color:var(--text);padding:11px 40px 11px 14px;border-radius:9px;
+  font-size:14px;outline:none;transition:border-color .15s,box-shadow .15s;
+  font-family:inherit;
+}
+.input-wrap input::placeholder{color:var(--text3)}
+.input-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,142,247,.15)}
+.input-wrap input.error{border-color:var(--red);box-shadow:0 0 0 3px rgba(239,68,68,.12)}
+
+.eye-btn{
+  position:absolute;right:12px;background:none;border:none;cursor:pointer;
+  color:var(--text3);padding:4px;display:flex;align-items:center;transition:color .15s;
+}
+.eye-btn:hover{color:var(--text2)}
+
+.error-msg{
+  font-size:12px;color:var(--red);margin-top:-12px;margin-bottom:4px;
+  display:none;align-items:center;gap:5px;
+}
+.error-msg.visible{display:flex}
+
+.forgot{
+  text-align:right;font-size:12px;color:var(--text3);margin-top:-10px;
+  margin-bottom:22px;
+}
+
+.btn{
+  width:100%;padding:13px;border:none;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;font-size:15px;font-weight:700;cursor:pointer;
+  transition:opacity .15s,transform .1s;letter-spacing:.1px;
+}
+.btn:hover{opacity:.88}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.loading{opacity:.75;cursor:not-allowed}
+
+.spinner{
+  display:inline-block;width:16px;height:16px;
+  border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;
+  border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.divider{height:1px;background:var(--border);margin:28px 0}
+.footer-note{text-align:center;font-size:12px;color:var(--text3)}
+.footer-note strong{color:var(--text2)}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo-row">
+    <div class="logo">TSC</div>
+    <div class="brand">
+      <span class="brand-name">The Sleep Company</span>
+      <span class="brand-sub">Traffic Dashboard</span>
+    </div>
+  </div>
+
+  <h2>Welcome back</h2>
+  <p class="subtitle">Sign in to access your traffic analytics.</p>
+
+  <form id="loginForm" onsubmit="handleLogin(event)" novalidate>
+
+    <div class="field">
+      <label for="email">Email address</label>
+      <div class="input-wrap">
+        <input type="email" id="email" placeholder="you@thesleepcompany.in" autocomplete="email" autofocus>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="password">Password</label>
+      <div class="input-wrap">
+        <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
+        <button type="button" class="eye-btn" onclick="togglePwd()" id="eyeBtn" title="Show/hide password">
+          <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="error-msg" id="errorMsg">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span id="errorText">Invalid credentials.</span>
+    </div>
+
+    <button class="btn" type="submit" id="submitBtn">Sign In</button>
+  </form>
+
+  <div class="divider"></div>
+  <div class="footer-note">&copy; 2026 The Sleep Company. All rights reserved.</div>
+</div>
+
+<script>
+const VALID_EMAIL_SUFFIX = '@thesleepcompany.in';
+const VALID_PASSWORD     = 'TSC@2026';
+
+function togglePwd(){
+  const inp = document.getElementById('password');
+  const icon = document.getElementById('eyeIcon');
+  const showing = inp.type === 'text';
+  inp.type = showing ? 'password' : 'text';
+  icon.innerHTML = showing
+    ? `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`
+    : `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+}
+
+function showError(msg){
+  const box  = document.getElementById('errorMsg');
+  const txt  = document.getElementById('errorText');
+  const eIn  = document.getElementById('email');
+  const pIn  = document.getElementById('password');
+  txt.textContent = msg;
+  box.classList.add('visible');
+  eIn.classList.add('error');
+  pIn.classList.add('error');
+}
+
+function clearError(){
+  document.getElementById('errorMsg').classList.remove('visible');
+  document.getElementById('email').classList.remove('error');
+  document.getElementById('password').classList.remove('error');
+}
+
+function handleLogin(e){
+  e.preventDefault();
+  clearError();
+
+  const email    = document.getElementById('email').value.trim().toLowerCase();
+  const password = document.getElementById('password').value;
+  const btn      = document.getElementById('submitBtn');
+
+  // Basic validation
+  if(!email){
+    showError('Please enter your email address.');
+    return;
+  }
+  if(!email.endsWith(VALID_EMAIL_SUFFIX)){
+    showError(`Email must end with ${VALID_EMAIL_SUFFIX}`);
+    return;
+  }
+  if(!password){
+    showError('Please enter your password.');
+    return;
+  }
+
+  // Loading state
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spinner"></span>Signing in…';
+
+  // Simulate network delay for realism
+  setTimeout(()=>{
+    if(password === VALID_PASSWORD){
+      // Success — store a simple session flag and redirect
+      sessionStorage.setItem('tsc_auth', btoa(email));
+      window.location.href = 'dashboard.html';
+    } else {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+      btn.textContent = 'Sign In';
+      showError('Incorrect password. Please try again.');
+      document.getElementById('password').focus();
+    }
+  }, 700);
+}
+
+// Clear errors on input
+['email','password'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', clearError);
+});
+
+// If already authenticated, skip login
+if(sessionStorage.getItem('tsc_auth')){
+  window.location.href = 'dashboard.html';
+}
+</script>
+</body>
+</html>
