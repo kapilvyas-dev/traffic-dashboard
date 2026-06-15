@@ -188,9 +188,11 @@ app.post('/api/projections', async (req, res) => {
   }
 });
 
-// Serve login page at root, dashboard at /dashboard
+// Serve login page at root, dashboard at /dashboard (with or without .html)
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
-app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'Dashboard.html')));
+app.get('/dashboard',      (req, res) => res.sendFile(path.join(__dirname, 'Dashboard.html')));
+app.get('/dashboard.html', (req, res) => res.sendFile(path.join(__dirname, 'Dashboard.html')));
+app.get('/Dashboard.html', (req, res) => res.sendFile(path.join(__dirname, 'Dashboard.html')));
 
 // ── START ──────────────────────────────────────────────────────────────────────
 
