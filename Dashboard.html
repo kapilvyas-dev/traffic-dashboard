@@ -874,13 +874,16 @@ function citySum(month, qaFlag, cityFilt, cat){
   });
   return r.map(v=>projectedVal(month,v));
 }
-function smSum(month, qaFlag, sm, cat){
+function smSum(month, qaFlag, sm, cat, city='ALL'){
   const flags=qaFlag==='ALL'?['QA','Non-QA','Unmapped','Organic']:[qaFlag];
   let r=[0,0,0];
   flags.forEach(flag=>{
     const md=(S.sm[month]||{})[flag]||{};
-    (sm==='ALL'?Object.values(md):[md[sm]||{}]).forEach(byCat=>{
-      (cat==='ALL'?Object.values(byCat):[byCat[cat]||[0,0,0]]).forEach(v=>{ r[0]+=v[0]||0; r[1]+=v[1]||0; r[2]+=v[2]||0; });
+    (sm==='ALL'?Object.values(md):[md[sm]||{}]).forEach(byCities=>{
+      const cityEntries=city==='ALL'?Object.values(byCities):[byCities[city]||{}];
+      cityEntries.forEach(byCat=>{
+        (cat==='ALL'?Object.values(byCat):[byCat[cat]||[0,0,0]]).forEach(v=>{ r[0]+=v[0]||0; r[1]+=v[1]||0; r[2]+=v[2]||0; });
+      });
     });
   });
   return r.map(v=>projectedVal(month,v));
@@ -1031,7 +1034,7 @@ function renderSMTable(city,cat,cur,prev,qaFlag){
     ...flags.flatMap(f=>Object.keys((S.sm[cur]||{})[f]||{})),
     ...flags.flatMap(f=>Object.keys((S.sm[prev]||{})[f]||{}))
   ]);
-  const rows=[...allSMs].map(sm=>({sm,cur:smSum(cur,qaFlag,sm,cat)[mi],prev:smSum(prev,qaFlag,sm,cat)[mi]})).filter(r=>r.cur>0||r.prev>0).sort((a,b)=>b.cur-a.cur);
+  const rows=[...allSMs].map(sm=>({sm,cur:smSum(cur,qaFlag,sm,cat,city)[mi],prev:smSum(prev,qaFlag,sm,cat,city)[mi]})).filter(r=>r.cur>0||r.prev>0).sort((a,b)=>b.cur-a.cur);
   const grand=rows.reduce((s,r)=>s+r.cur,0);
   document.getElementById('smBody').innerHTML=rows.map(r=>{ const share=grand>0?(r.cur/grand*100).toFixed(1):0; return`<tr><td>${r.sm}</td><td class="num metric-primary">${r.cur.toLocaleString('en-IN')}</td><td class="num" style="color:var(--text2)">${r.prev.toLocaleString('en-IN')}</td><td class="num">${badge(r.cur,r.prev)}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${share}%;background:${BAR_COLORS[S.metric]}"></div></div><span style="font-size:12px;color:var(--text2);min-width:38px">${share}%</span></div></td></tr>`; }).join('');
   const mx=Math.max(...rows.map(r=>Math.max(r.cur,r.prev)),1);
@@ -1112,7 +1115,7 @@ function exportData(type){
     wsData.push([`Note: ${cl}${projNote}`]);
     wsData.push(['Source/Medium',`${cl} Users`,`${cl} ATC`,`${cl} Checkout`,`${pl} Users`,`${pl} ATC`,`${pl} Checkout`,'Users Δ%','ATC Δ%','Checkout Δ%','Share%']);
     const allSMs=new Set([...Object.keys((S.sm[cur]||{})[qaFlag]||{}),...Object.keys((S.sm[prev]||{})[qaFlag]||{})]);
-    const rows=[...allSMs].map(sm=>({sm,cv:smSum(cur,qaFlag,sm,cat),pv:smSum(prev,qaFlag,sm,cat)})).filter(r=>r.cv[0]>0||r.pv[0]>0).sort((a,b)=>b.cv[0]-a.cv[0]);
+    const rows=[...allSMs].map(sm=>({sm,cv:smSum(cur,qaFlag,sm,cat,city),pv:smSum(prev,qaFlag,sm,cat,city)})).filter(r=>r.cv[0]>0||r.pv[0]>0).sort((a,b)=>b.cv[0]-a.cv[0]);
     const grand=rows.reduce((s,r)=>s+r.cv[0],0);
     rows.forEach(r=>wsData.push([r.sm,...r.cv,...r.pv,pctStr(r.cv[0],r.pv[0]),pctStr(r.cv[1],r.pv[1]),pctStr(r.cv[2],r.pv[2]),grand>0?(r.cv[0]/grand*100).toFixed(1)+'%':'—']));
   } else if(type==='camp'){
@@ -1417,7 +1420,7 @@ function aggregateRaw(rawRows){
     const vals=[row.users,row.atc,row.checkout];
     total++; byFlag[qaFlag]=(byFlag[qaFlag]||0)+1;
     if(!city[m])city[m]={}; if(!city[m][qaFlag])city[m][qaFlag]={}; if(!city[m][qaFlag][mappedCity])city[m][qaFlag][mappedCity]={}; add3(city[m][qaFlag][mappedCity],cat,vals);
-    if(smv){ if(!sm[m])sm[m]={}; if(!sm[m][qaFlag])sm[m][qaFlag]={}; if(!sm[m][qaFlag][smv])sm[m][qaFlag][smv]={}; add3(sm[m][qaFlag][smv],cat,vals); }
+    if(smv){ if(!sm[m])sm[m]={}; if(!sm[m][qaFlag])sm[m][qaFlag]={}; if(!sm[m][qaFlag][smv])sm[m][qaFlag][smv]={}; if(!sm[m][qaFlag][smv][mappedCity])sm[m][qaFlag][smv][mappedCity]={}; add3(sm[m][qaFlag][smv][mappedCity],cat,vals); }
     if(row.campaign){ if(!camp[m])camp[m]={}; if(!camp[m][qaFlag])camp[m][qaFlag]={}; if(!camp[m][qaFlag][row.campaign])camp[m][qaFlag][row.campaign]={}; if(!camp[m][qaFlag][row.campaign][cat])camp[m][qaFlag][row.campaign][cat]={}; add3(camp[m][qaFlag][row.campaign][cat],mappedCity,vals); }
   });
   Object.keys(camp).forEach(m=>Object.keys(camp[m]).forEach(flag=>{
